@@ -1,0 +1,5 @@
+# Optional: enables on-device vehicle counting from camera frames
+ultralytics>=8.2
+# Optional: zero-shot road-condition tags (wet / flood / fog / smoke) via CLIP (~600 MB download)
+transformers>=4.40
+pillow>=10

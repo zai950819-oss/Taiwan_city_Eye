@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-Hant" translate="no">
+<head>
+<meta charset="utf-8" />
+<meta name="google" content="notranslate" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Taiwan City Eye</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="map"></div>
+<div id="zoom-gate" class="hud gate hidden">Zoom in to scan this area <small>(data loads at zoom ≥ <span id="min-zoom"></span>)</small></div>
+<div id="toasts"></div>
+
+<header class="hud top">
+  <div class="brand">
+    <span class="eye"></span>
+    <div>
+      <div class="title">台灣城市之眼 <span>TAIWAN CITY EYE</span></div>
+      <div class="sub"><span id="mode" class="badge">…</span> <span id="clock"></span></div>
+    </div>
+  </div>
+  <div class="stats">
+    <div><b id="s-cams">–</b><small>cameras in view</small></div>
+    <div><b id="s-sampled">–</b><small>analysed · 15m</small></div>
+    <div><b id="s-speed">–</b><small>avg freeway km/h</small></div>
+    <div><b id="s-jams" class="red">–</b><small>jammed sections</small></div>
+    <div><b id="s-alerts" class="red">–</b><small>active alerts</small></div>
+  </div>
+  <div class="top-actions">
+    <button id="btn-replay" class="pill">⏱ Replay</button>
+    <button id="btn-wall" class="pill">▦ Wall <span id="wall-count">0</span></button>
+  </div>
+</header>
+
+<aside class="hud left">
+  <nav class="tabs">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="alerts">Alerts <span id="alert-badge" class="count hidden">0</span></button>
+  </nav>
+
+  <section id="tab-overview">
+    <h3>Jump to</h3>
+    <div class="jumps">
+      <button data-fly="121.5654,25.0400,15">台北</button>
+      <button data-fly="121.4628,25.0120,14">新北</button>
+      <button data-fly="120.6736,24.1477,14">台中</button>
+      <button data-fly="120.3014,22.6273,14">高雄</button>
+      <button data-fly="120.95,23.75,7">全台</button>
+    </div>
+    <h3>Layers</h3>
+    <label><input type="checkbox" id="l-buildings" checked /> 3D buildings</label>
+    <label><input type="checkbox" id="l-sections" checked /> Freeway speed</label>
+    <label><input type="checkbox" id="l-freeway-cams" checked /> 📷 Freeway / highway cameras</label>
+    <label><input type="checkbox" id="l-city-cams" checked /> 📷 City cameras</label>
+    <label><input type="checkbox" id="l-radar" checked /> 🌧 Rain radar <small id="radar-time" class="muted"></small></label>
+    <label><input type="checkbox" id="l-gauges" checked /> Rain gauges (mm/h)</label>
+    <label><input type="checkbox" id="l-alerts" checked /> ⚠ Alert pulses</label>
+    <p class="hint">Click any <b>camera icon</b> to watch it live.</p>
+    <h3>Slowest sections</h3>
+    <ol id="h-sections"></ol>
+    <h3>Busiest cameras</h3>
+    <ol id="h-cams"></ol>
+    <h3>Freeway network · 24h</h3>
+    <canvas id="net-chart" width="260" height="70"></canvas>
+    <div class="legend"><i class="g"></i>free <i class="a"></i>busy <i class="r"></i>jam <i class="n"></i>no data</div>
+  </section>
+
+  <section id="tab-alerts" class="hidden">
+    <p class="muted tiny">Each road and camera is compared to its own normal for this hour.</p>
+    <ul id="alert-list" class="alert-list"></ul>
+  </section>
+</aside>
+
+<aside class="hud right hidden" id="panel">
+  <button id="close" class="x" aria-label="close">×</button>
+  <h3 id="p-name"></h3>
+  <div class="muted" id="p-meta"></div>
+  <div id="p-cond"></div>
+  <div id="p-player" class="player"></div>
+  <div class="player-actions">
+    <a id="p-link" target="_blank" rel="noopener">Open in new tab ↗</a>
+    <span>
+      <button id="p-pin">📌 Pin to wall</button>
+      <button id="p-reload">↻ Reload</button>
+    </span>
+  </div>
+  <div class="counts" id="p-counts"></div>
+  <h3>Vehicles · 24h</h3>
+  <canvas id="p-chart" width="360" height="80"></canvas>
+  <p class="muted tiny">Counts only. Frames are analysed in memory and discarded — no faces or plates are stored.</p>
+</aside>
+
+<div id="replay" class="hud replay hidden">
+  <button id="r-play" class="pill">▶</button>
+  <div class="r-track">
+    <canvas id="r-strip" width="800" height="14"></canvas>
+    <input id="r-slider" type="range" min="0" max="0" value="0" />
+  </div>
+  <div class="r-time" id="r-time">–</div>
+  <select id="r-speed">
+    <option value="2">1×</option><option value="6" selected>3×</option><option value="15">8×</option>
+  </select>
+  <button id="r-live" class="pill live">● Live</button>
+</div>
+
+<div id="wall" class="wall hidden">
+  <div class="wall-head">
+    <b>▦ Camera wall</b>
+    <span class="muted tiny">Pin cameras from the camera panel · max 9</span>
+    <span class="spacer"></span>
+    <button class="pill" data-cols="2">2×2</button>
+    <button class="pill" data-cols="3">3×3</button>
+    <button class="pill" id="wall-close">Close ✕</button>
+  </div>
+  <div id="wall-grid" class="wall-grid"></div>
+  <div id="wall-empty" class="wall-empty hidden">No cameras pinned yet.<br><small>Open a camera and press “📌 Pin to wall”.</small></div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/hls.js@1.5.15/dist/hls.min.js" defer></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+# --- secrets: never commit ---
+.env
+.env.*
+!.env.example
+
+# --- local data & media ---
+data/
+demo/
+*.db
+*.db-shm
+*.db-wal
+*.mp4
+*.mp3
+
+# --- model weights (downloaded automatically) ---
+*.pt
+*.onnx
+
+# --- Python ---
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# --- OS / editor / leftovers ---
+.DS_Store
+.fuse_hidden*
+*.bak
+.idea/
+.vscode/
